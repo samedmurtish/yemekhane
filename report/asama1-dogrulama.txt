@@ -1,0 +1,23 @@
+Stage 1 verification
+
+docker compose up -d
+All infrastructure services are healthy.
+replica-setup exited with status 0.
+
+Primary write test:
+CALL sp_bakiye_yukle(7, 100)
+
+Replica read result:
+id 7, bakiye 455.00
+
+Replica write test:
+ERROR 1290 - super-read-only
+
+Replica restart result:
+id 7, bakiye 655.00
+Replica_IO_Running: Yes
+Replica_SQL_Running: Yes
+Seconds_Behind_Source: 0
+
+Redis:
+PONG
