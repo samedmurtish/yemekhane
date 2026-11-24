@@ -1,4 +1,45 @@
 const db = require('../db');
+const redisService = require('../services/redisService');
+
+function turkeyToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
+async function getCachedMenu(canteenId, date, mealId) {
+  const key = redisService.menuKey(canteenId, date, mealId);
+  const cached = await redisService.getMenu(key);
+  if (cached) {
+    console.log(`[CACHE HIT] ${key} -> served from redis`);
+    return cached;
+  }
+
+  const menus = await db.read(`
+    SELECT m.id, m.tarih, m.ogun_id, o.ad AS ogun, m.ogrenci_fiyati,
+           m.personel_fiyati, d.kapasite, d.bos_yer, d.rezerve,
+           d.rezervasyon_son
+      FROM menuler m
+      JOIN ogunler o ON o.id = m.ogun_id
+      JOIN v_menu_doluluk d ON d.menu_id = m.id
+     WHERE m.yemekhane_id = ? AND m.tarih = ? AND m.ogun_id = ?
+  `, [canteenId, date, mealId]);
+  if (!menus.length) {
+    await redisService.setMenu(key, { menu: null, foods: [] });
+    console.log(`[CACHE MISS] ${key} -> fetched from mysql-replica`);
+    return { menu: null, foods: [] };
+  }
+
+  const menu = menus[0];
+  const foods = await getFoodsForMenus([menu.id]);
+  const payload = { menu, foods };
+  await redisService.setMenu(key, payload);
+  console.log(`[CACHE MISS] ${key} -> fetched from mysql-replica`);
+  return payload;
+}
 
 async function getCanteens() {
   return db.read('SELECT id, ad, konum, kapasite FROM yemekhaneler ORDER BY id');
@@ -44,17 +85,12 @@ async function getFoodsForMenus(menuIds) {
 }
 
 async function getTodayComplete(canteenId) {
-  const menus = await db.read(`
-    SELECT m.id, m.tarih, m.ogun_id, o.ad AS ogun, m.ogrenci_fiyati,
-           m.personel_fiyati, d.kapasite, d.bos_yer, d.rezerve,
-           d.rezervasyon_son
-      FROM menuler m
-      JOIN ogunler o ON o.id = m.ogun_id
-      JOIN v_menu_doluluk d ON d.menu_id = m.id
-     WHERE m.yemekhane_id = ? AND m.tarih = CURDATE()
-     ORDER BY o.sira
-  `, [canteenId]);
-  const foods = await getFoodsForMenus(menus.map((menu) => menu.id));
+  const date = turkeyToday();
+  const payloads = await Promise.all([1, 2, 3].map((mealId) =>
+    getCachedMenu(canteenId, date, mealId)
+  ));
+  const menus = payloads.map((payload) => payload.menu).filter(Boolean);
+  const foods = payloads.flatMap((payload) => payload.foods);
   return { menus, foods };
 }
 
@@ -69,7 +105,14 @@ async function getWeekly(canteenId, startDate) {
      WHERE m.yemekhane_id = ? AND m.tarih BETWEEN ? AND DATE_ADD(?, INTERVAL 6 DAY)
      ORDER BY m.tarih, o.sira
   `, [canteenId, startDate, startDate]);
-  const foods = await getFoodsForMenus(menus.map((menu) => menu.id));
+  const cachedPayloads = await Promise.all(
+    menus.map((menu) => getCachedMenu(
+      canteenId,
+      new Date(menu.tarih).toISOString().slice(0, 10),
+      menu.ogun_id
+    ))
+  );
+  const foods = cachedPayloads.flatMap((payload) => payload.foods);
   return { menus, foods };
 }
 
@@ -89,6 +132,9 @@ async function createMenu({ yemekhaneId, tarih, ogunId, ogrenciFiyati, personelF
       );
     }
     await connection.commit();
+    await redisService.invalidateMenu(
+      redisService.menuKey(yemekhaneId, tarih, ogunId)
+    );
     return result.insertId;
   } catch (error) {
     await connection.rollback();
@@ -101,6 +147,14 @@ async function createMenu({ yemekhaneId, tarih, ogunId, ogrenciFiyati, personelF
 async function updateMenu(menuId, { ogrenciFiyati, personelFiyati, yemekIds }) {
   const connection = await db.primary.getConnection();
   try {
+    const [metadataRows] = await connection.execute(
+      'SELECT yemekhane_id, DATE_FORMAT(tarih, "%Y-%m-%d") AS tarih, ogun_id FROM menuler WHERE id = ?',
+      [menuId]
+    );
+    if (!metadataRows.length) {
+      throw new Error('Menü bulunamadı.');
+    }
+    const metadata = metadataRows[0];
     await connection.beginTransaction();
     await connection.execute(
       'UPDATE menuler SET ogrenci_fiyati = ?, personel_fiyati = ? WHERE id = ?',
@@ -114,6 +168,9 @@ async function updateMenu(menuId, { ogrenciFiyati, personelFiyati, yemekIds }) {
       );
     }
     await connection.commit();
+    await redisService.invalidateMenu(
+      redisService.menuKey(metadata.yemekhane_id, metadata.tarih, metadata.ogun_id)
+    );
   } catch (error) {
     await connection.rollback();
     throw error;
