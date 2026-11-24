@@ -218,6 +218,20 @@ th, td {
   font-size: 0.82rem;
 }
 
+.alerjen-uyari {
+  margin: 6px 0;
+  padding: 7px 9px;
+  border: 1px solid #d92d20;
+  border-radius: 6px;
+  background: #fff1f0;
+  color: #b42318;
+  font-weight: 700;
+}
+
+.alerjenli-yemek {
+  border: 2px solid #d92d20;
+}
+
 .check-list {
   max-height: 260px;
   overflow-y: auto;
