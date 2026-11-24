@@ -93,6 +93,20 @@ services:
         condition: service_healthy
       mysql-replica:
         condition: service_healthy
+      migration-runner:
+        condition: service_completed_successfully
+
+  migration-runner:
+    image: mysql:8.4
+    restart: "no"
+    entrypoint: ["/bin/sh", "/migration/migrate.sh"]
+    environment:
+      MYSQL_ROOT_PASSWORD: yemekhane_kok
+    volumes:
+      - ./db/migrations:/migration:ro
+    depends_on:
+      mysql-primary:
+        condition: service_healthy
 
   # ---------------------------------------------------------------
   # Redis · menü önbelleği ve oturum deposu (AOF açık, yeniden başlatmada veri kalır)
