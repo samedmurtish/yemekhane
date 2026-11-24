@@ -1,0 +1,4 @@
+Session key: oturum:e7594fe9aa5d771eec5f3933e41fc8a6e84cdea0b96018230e8baa9b2e2e8765
+Initial TTL: 1639
+Authenticated request: GET /api/auth/me 200 OK
+Refreshed TTL: 1636

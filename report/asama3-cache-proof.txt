@@ -1,0 +1,10 @@
+uygulama-1  | [CACHE MISS] menu:1:2026-11-24:2 -> fetched from mysql-replica
+uygulama-1  | [CACHE MISS] menu:1:2026-11-24:1 -> fetched from mysql-replica
+uygulama-1  | [CACHE MISS] menu:1:2026-11-24:3 -> fetched from mysql-replica
+uygulama-1  | [CACHE HIT] menu:1:2026-11-24:1 -> served from redis
+uygulama-1  | [CACHE HIT] menu:1:2026-11-24:2 -> served from redis
+uygulama-1  | [CACHE HIT] menu:1:2026-11-24:3 -> served from redis
+uygulama-1  | [CACHE INVALIDATE] menu:1:2026-11-24:1
+uygulama-1  | [CACHE HIT] menu:1:2026-11-24:2 -> served from redis
+uygulama-1  | [CACHE HIT] menu:1:2026-11-24:3 -> served from redis
+uygulama-1  | [CACHE MISS] menu:1:2026-11-24:1 -> fetched from mysql-replica
