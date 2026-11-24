@@ -16,6 +16,17 @@ async function getUsedMenus(userId) {
 }
 
 async function saveEvaluation(userId, menuId, rating, comment) {
+  const used = await db.write(
+    `SELECT id FROM rezervasyonlar
+      WHERE kullanici_id = ? AND menu_id = ? AND durum = 'kullanildi'
+      LIMIT 1`,
+    [userId, menuId]
+  );
+  if (!used.length) {
+    const error = new Error('Yalnızca kullanılmış menüler değerlendirilebilir.');
+    error.sqlState = '45000';
+    throw error;
+  }
   await db.write(`
     INSERT INTO degerlendirmeler (kullanici_id, menu_id, puan, yorum)
     VALUES (?, ?, ?, ?)

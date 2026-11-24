@@ -21,6 +21,7 @@ router.get('/api/reservations', requireAuth, reservationController.list);
 router.post('/api/reservations', requireAuth, reservationController.reserve);
 router.post('/api/reservations/:id/cancel', requireAuth, reservationController.cancel);
 router.get('/api/balance', requireAuth, reservationController.balance);
+router.get('/api/balance/source', requireAuth, reservationController.sourceBalance);
 router.post('/api/balance/load', requireAuth, reservationController.loadBalance);
 
 router.get('/api/evaluations/used-menus', requireAuth, evaluationController.usedMenus);

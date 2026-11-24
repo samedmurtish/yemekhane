@@ -213,8 +213,9 @@ async function renderWeekly() {
         button.addEventListener('click', async () => {
           showMessage('');
           try {
-            await api('/api/reservations', { method: 'POST', body: JSON.stringify({ menu_id: Number(button.dataset.menu) }) });
-            showMessage('Rezervasyon oluşturuldu.', 'basari');
+            const result = await api('/api/reservations', { method: 'POST', body: JSON.stringify({ menu_id: Number(button.dataset.menu) }) });
+            const sourceBalance = await api('/api/balance/source');
+            showMessage(`Rezervasyon oluşturuldu. Kaynak bakiye: ${formatMoney(sourceBalance.balance)}.`, 'basari');
             loadWeekly();
           } catch (error) {
             showMessage(error.message);
@@ -391,13 +392,67 @@ async function renderAdmin() {
         <h2 style="margin-top:24px">Menüler ve Doluluk</h2>
         <div class="tablo-kaydir">
           <table>
-            <thead><tr><th>Tarih</th><th>Yemekhane</th><th>Öğün</th><th>Doluluk</th><th>Ortalama Puan</th></tr></thead>
+            <thead><tr><th>Tarih</th><th>Yemekhane</th><th>Öğün</th><th>Doluluk</th><th>Ortalama Puan</th><th>İşlem</th></tr></thead>
             <tbody>${data.menus.map((item) => `
-              <tr><td>${formatDate(item.tarih)}</td><td>${escapeHtml(item.yemekhane)}</td><td>${escapeHtml(item.ogun)}</td><td>${item.rezerve}/${item.kapasite}</td><td>${item.ortalama_puan ?? '-'}</td></tr>
+              <tr>
+                <td>${formatDate(item.tarih)}</td>
+                <td>${escapeHtml(item.yemekhane)}</td>
+                <td>${escapeHtml(item.ogun)}</td>
+                <td>${item.rezerve}/${item.kapasite}</td>
+                <td>${item.ortalama_puan ?? '-'}</td>
+                <td><button class="dugme edit-menu" type="button" data-id="${item.id}" data-ogrenci="${item.ogrenci_fiyati}" data-personel="${item.personel_fiyati}">Düzenle</button></td>
+              </tr>
             `).join('')}</tbody>
           </table>
         </div>
+        <div id="edit-menu-panel" class="panel" hidden>
+          <h2>Menüyü Düzenle</h2>
+          <form id="admin-edit" class="grid">
+            <input id="edit-menu-id" type="hidden" name="menu_id">
+            <div><label>Öğrenci fiyatı</label><input name="ogrenci_fiyati" type="number" min="0" step="0.01" required></div>
+            <div><label>Personel fiyatı</label><input name="personel_fiyati" type="number" min="0" step="0.01" required></div>
+            <div><label>Yemekler</label><div class="check-list">${foods.map((item) => `<label><input type="checkbox" name="edit_yemek_ids" value="${item.id}">${escapeHtml(item.ad)}</label>`).join('')}</div></div>
+            <div><button class="dugme" type="submit">Değişiklikleri Kaydet</button></div>
+          </form>
+        </div>
       </section>`;
+    document.querySelectorAll('.edit-menu').forEach((button) => {
+      button.addEventListener('click', () => {
+        const panel = document.getElementById('edit-menu-panel');
+        panel.hidden = false;
+        document.getElementById('edit-menu-id').value = button.dataset.id;
+        document.querySelector('#admin-edit [name="ogrenci_fiyati"]').value = button.dataset.ogrenci;
+        document.querySelector('#admin-edit [name="personel_fiyati"]').value = button.dataset.personel;
+        const selectedFoods = data.foods
+          .filter((food) => food.menu_id === Number(button.dataset.id))
+          .map((food) => String(food.yemek_id));
+        document.querySelectorAll('input[name="edit_yemek_ids"]').forEach((input) => {
+          input.checked = selectedFoods.includes(input.value);
+        });
+        panel.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+    document.getElementById('admin-edit').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      showMessage('');
+      const form = new FormData(event.target);
+      const menuId = Number(form.get('menu_id'));
+      const yemekIds = [...event.target.querySelectorAll('input[name="edit_yemek_ids"]:checked')].map((input) => Number(input.value));
+      try {
+        await api(`/api/admin/menus/${menuId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            ogrenci_fiyati: Number(form.get('ogrenci_fiyati')),
+            personel_fiyati: Number(form.get('personel_fiyati')),
+            yemek_ids: yemekIds
+          })
+        });
+        showMessage('Menü düzenlendi.', 'basari');
+        renderAdmin();
+      } catch (error) {
+        showMessage(error.message);
+      }
+    });
     document.getElementById('admin-create').addEventListener('submit', async (event) => {
       event.preventDefault();
       showMessage('');

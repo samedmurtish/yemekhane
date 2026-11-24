@@ -16,6 +16,14 @@ async function getBalance(userId) {
   return rows[0] || null;
 }
 
+async function getBalanceFromPrimary(userId) {
+  const rows = await db.write(
+    'SELECT bakiye FROM kullanicilar WHERE id = ?',
+    [userId]
+  );
+  return rows[0] || null;
+}
+
 async function getHistory(userId) {
   return db.read(
     `SELECT id, tur, tutar, aciklama, olusturma, rezervasyon_id
@@ -26,4 +34,4 @@ async function getHistory(userId) {
   );
 }
 
-module.exports = { findByEmail, getBalance, getHistory };
+module.exports = { findByEmail, getBalance, getBalanceFromPrimary, getHistory };

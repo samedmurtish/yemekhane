@@ -36,6 +36,15 @@ async function balance(req, res, next) {
   }
 }
 
+async function sourceBalance(req, res, next) {
+  try {
+    const balance = await userRepository.getBalanceFromPrimary(req.session.userId);
+    res.json({ balance: balance?.bakiye || '0.00', source: 'primary' });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function loadBalance(req, res, next) {
   try {
     const result = await repository.loadBalance(req.session.userId, Number(req.body.tutar));
@@ -45,4 +54,4 @@ async function loadBalance(req, res, next) {
   }
 }
 
-module.exports = { list, reserve, cancel, balance, loadBalance };
+module.exports = { list, reserve, cancel, balance, sourceBalance, loadBalance };
