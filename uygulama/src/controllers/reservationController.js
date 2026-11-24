@@ -11,7 +11,11 @@ async function list(req, res, next) {
 
 async function reserve(req, res, next) {
   try {
-    const result = await repository.reserve(req.session.userId, Number(req.body.menu_id));
+    const result = await repository.reserve(
+      req.session.userId,
+      Number(req.body.menu_id),
+      req.body.porsiyon
+    );
     res.status(201).json(result);
   } catch (error) {
     next(error);

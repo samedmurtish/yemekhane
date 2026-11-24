@@ -3,7 +3,7 @@ const db = require('../db');
 async function getReservations(userId) {
   return db.read(`
     SELECT r.id, r.menu_id, r.durum, r.ucret, r.olusturma, r.kullanma_zamani,
-           r.iptal_zamani, m.tarih, yh.ad AS yemekhane, o.ad AS ogun,
+           r.iptal_zamani, r.porsiyon, m.tarih, yh.ad AS yemekhane, o.ad AS ogun,
            o.son_saat, TIMESTAMP(m.tarih, o.son_saat) AS rezervasyon_son
       FROM rezervasyonlar r
       JOIN menuler m ON m.id = r.menu_id
@@ -14,8 +14,12 @@ async function getReservations(userId) {
   `, [userId]);
 }
 
-async function reserve(userId, menuId) {
-  const [rows] = await db.call('CALL sp_rezervasyon_yap(?, ?)', [userId, menuId]);
+async function reserve(userId, menuId, portion) {
+  const [rows] = await db.call('CALL sp_rezervasyon_yap(?, ?, ?)', [
+    userId,
+    menuId,
+    portion === 'yarim' ? 'yarim' : 'tam'
+  ]);
   return rows[0];
 }
 

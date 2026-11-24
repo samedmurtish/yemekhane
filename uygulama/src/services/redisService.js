@@ -78,6 +78,25 @@ async function invalidateMenu(key) {
   console.log(`[CACHE INVALIDATE] ${key}`);
 }
 
+async function clearMenuCaches() {
+  let cursor = '0';
+  let deleted = 0;
+  do {
+    const [nextCursor, keys] = await redis.scan(
+      cursor,
+      'MATCH',
+      'menu:*',
+      'COUNT',
+      100
+    );
+    cursor = nextCursor;
+    if (keys.length) {
+      deleted += await redis.del(...keys);
+    }
+  } while (cursor !== '0');
+  console.log(`[CACHE CLEANUP] menu:* deleted=${deleted}`);
+}
+
 module.exports = {
   redis,
   menuKey,
@@ -88,4 +107,5 @@ module.exports = {
   getMenu,
   setMenu,
   invalidateMenu
+  ,clearMenuCaches
 };

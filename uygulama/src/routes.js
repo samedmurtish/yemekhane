@@ -3,6 +3,7 @@ const authController = require('./controllers/authController');
 const menuController = require('./controllers/menuController');
 const reservationController = require('./controllers/reservationController');
 const evaluationController = require('./controllers/evaluationController');
+const profileController = require('./controllers/profileController');
 const { requireAuth, requireAdmin } = require('./middleware');
 
 const router = express.Router();
@@ -26,6 +27,8 @@ router.post('/api/balance/load', requireAuth, reservationController.loadBalance)
 
 router.get('/api/evaluations/used-menus', requireAuth, evaluationController.usedMenus);
 router.post('/api/evaluations', requireAuth, evaluationController.save);
+router.get('/api/profile/allergens', requireAuth, profileController.allergens);
+router.put('/api/profile/allergens', requireAuth, profileController.saveAllergens);
 
 router.get('/api/admin/menus', requireAuth, requireAdmin, menuController.adminMenus);
 router.post('/api/admin/menus', requireAuth, requireAdmin, menuController.createMenu);

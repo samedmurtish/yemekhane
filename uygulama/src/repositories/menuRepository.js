@@ -63,7 +63,7 @@ async function getToday(canteenId) {
     `, [canteenId]),
     db.read(`
       SELECT vd.menu_id, vd.yemek_id, vd.yemek, vd.kalori, vd.vejetaryen,
-             vd.alerjenler, vd.kategori, vd.kategori_sira
+             vd.alerjenler, vd.alerjen_idler, vd.kategori, vd.kategori_sira
         FROM v_menu_detay vd
        WHERE vd.yemekhane_id = ? AND vd.tarih = CURDATE()
        ORDER BY vd.ogun_sira, vd.kategori_sira, vd.yemek
@@ -77,7 +77,7 @@ async function getFoodsForMenus(menuIds) {
   const placeholders = menuIds.map(() => '?').join(',');
   return db.read(`
     SELECT vd.menu_id, vd.yemek_id, vd.yemek, vd.kalori, vd.vejetaryen,
-           vd.alerjenler, vd.kategori, vd.kategori_sira
+           vd.alerjenler, vd.alerjen_idler, vd.kategori, vd.kategori_sira
       FROM v_menu_detay vd
      WHERE vd.menu_id IN (${placeholders})
      ORDER BY vd.ogun_sira, vd.kategori_sira, vd.yemek
