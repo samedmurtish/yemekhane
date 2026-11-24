@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const userRepository = require('../repositories/userRepository');
-const { createSession, destroySession } = require('../middleware');
+const { createSession } = require('../middleware');
+const redisService = require('../services/redisService');
 
 async function login(req, res, next) {
   try {
@@ -11,7 +12,14 @@ async function login(req, res, next) {
       return res.status(401).json({ message: 'E-posta veya şifre hatalı.' });
     }
     const token = createSession(user);
-    res.setHeader('Set-Cookie', `oturum=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000`);
+    await redisService.createSession(token, {
+      userId: user.id,
+      rol: user.rol,
+      ad: user.ad,
+      soyad: user.soyad,
+      eposta: user.eposta
+    });
+    res.setHeader('Set-Cookie', `oturum=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=1800`);
     return res.json({
       id: user.id,
       ad: user.ad,
@@ -28,8 +36,12 @@ function me(req, res) {
   return res.json(req.session);
 }
 
-function logout(req, res) {
-  if (req.sessionToken) destroySession(req.sessionToken);
+async function logout(req, res, next) {
+  try {
+    if (req.sessionToken) await redisService.deleteSession(req.sessionToken);
+  } catch (error) {
+    return next(error);
+  }
   res.setHeader('Set-Cookie', 'oturum=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0');
   return res.json({ message: 'Çıkış yapıldı.' });
 }

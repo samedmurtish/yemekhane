@@ -1,25 +1,28 @@
 const crypto = require('crypto');
-const sessions = new Map();
+const redisService = require('./services/redisService');
 
 function createSession(user) {
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, { userId: user.id, rol: user.rol, ad: user.ad, soyad: user.soyad, eposta: user.eposta });
   return token;
 }
 
-function destroySession(token) {
-  sessions.delete(token);
-}
-
-function sessionMiddleware(req, res, next) {
+async function sessionMiddleware(req, res, next) {
   const cookieToken = (req.headers.cookie || '')
     .split(';')
     .map((part) => part.trim())
     .find((part) => part.startsWith('oturum='))
     ?.split('=')[1];
-  if (cookieToken && sessions.has(cookieToken)) {
-    req.session = sessions.get(cookieToken);
-    req.sessionToken = cookieToken;
+  if (cookieToken) {
+    try {
+      const session = await redisService.getSession(cookieToken);
+      if (session) {
+        await redisService.refreshSession(cookieToken);
+        req.session = session;
+        req.sessionToken = cookieToken;
+      }
+    } catch (error) {
+      console.error(`[SESSION ERROR] ${error.message}`);
+    }
   }
   next();
 }
@@ -51,7 +54,6 @@ function errorHandler(error, req, res, next) {
 
 module.exports = {
   createSession,
-  destroySession,
   sessionMiddleware,
   requireAuth,
   requireAdmin,
